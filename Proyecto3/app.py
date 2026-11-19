@@ -12,8 +12,10 @@ También anima el enfriamiento completo de una aleación, desde el líquido hast
 temperatura ambiente.
 """
 
+import base64
 import time
 from functools import lru_cache
+from pathlib import Path
 
 import numpy as np
 import plotly.graph_objects as go
@@ -809,11 +811,102 @@ def eventos_cache(x0):
 
 
 # ============================================================
+# 3b. PORTADA (pantalla de inicio de la app)
+# ============================================================
+
+# Datos de la portada: cámbialos aquí si hace falta
+UNIVERSIDAD = "UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO"
+FACULTAD = "FACULTAD DE INGENIERÍA"
+CARRERA = "INGENIERÍA EN MATERIALES"
+NUMERO_PROYECTO = "Proyecto 3."
+TITULO_PROYECTO = "Simulador interactivo del diagrama de fases Fe–Fe₃C"
+SUBTITULO_PROYECTO = "Fases, composiciones y microestructura al enfriar una aleación"
+INTEGRANTES = ["Lozano Zuñiga Paris David", "Gil Flores Aizdiakova", "Romo Ramirez Uriel Esau"]
+PROFESORA = "Artemisa Mazón Martínez"
+FECHA_PORTADA = "Noviembre de 2026"
+
+# Para que los escudos no dependan de internet, guarda las imágenes en esta misma carpeta
+# con estos nombres. Si no existen, se usan los enlaces de respaldo.
+ESCUDO_UNAM_ARCHIVO = "escudo_unam.png"
+ESCUDO_FI_ARCHIVO = "escudo_fi.png"
+ESCUDO_UNAM_URL = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQOX2QZFR3-Ksq0vPJpXPE2hyBlQnBQDkYEdNH5pn4-XKmh8zvcFF5oV_Y&s=10"
+ESCUDO_FI_URL = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLBf1_wgvTqmuqxgXTMSQB3wN-W4ugHpTnNVFT9Fi0ZheiqIpg4sykFvxL&s=10"
+
+
+def imagen_html(archivo, url_respaldo, ancho, alt):
+    """Usa la imagen local si existe; si no, el enlace de respaldo."""
+    ruta = Path(__file__).parent / archivo
+    if ruta.exists():
+        tipo = "image/png" if ruta.suffix.lower() == ".png" else "image/jpeg"
+        origen = f"data:{tipo};base64," + base64.b64encode(ruta.read_bytes()).decode()
+    else:
+        origen = url_respaldo
+    return f'<img src="{origen}" width="{ancho}" alt="{alt}">'
+
+
+def construir_portada():
+    escudo_unam = imagen_html(ESCUDO_UNAM_ARCHIVO, ESCUDO_UNAM_URL, 110, "Escudo UNAM")
+    escudo_fi = imagen_html(ESCUDO_FI_ARCHIVO, ESCUDO_FI_URL, 120, "Escudo FI")
+    lista_integrantes = "".join(
+        f'<p style="font-size: 16px; margin: 3px 0; color: #333;">- {nombre}</p>' for nombre in INTEGRANTES)
+    return f"""
+<div style="text-align: center; font-family: 'Times New Roman', Times, serif; border: 3px double #1F4E79; padding: 30px; border-radius: 10px; max-width: 800px; margin: 0 auto; background-color: #FAFAFA;">
+  <h1 style="color: #0F2C59; font-size: 26px; margin-bottom: 5px; font-weight: bold; letter-spacing: 1px;">{UNIVERSIDAD}</h1>
+  <table style="width: 100%; border: none; margin: 20px 0; background: transparent;">
+    <tr style="background: transparent;">
+      <td style="width: 25%; text-align: left; border: none; vertical-align: middle;">{escudo_unam}</td>
+      <td style="width: 50%; text-align: center; border: none; vertical-align: middle;">
+        <h2 style="font-size: 20px; color: #1F4E79; margin: 0; font-weight: bold;">{FACULTAD}</h2>
+        <h3 style="font-size: 16px; color: #151515; margin: 10px 0 0 0; font-weight: bold; letter-spacing: 1px;">{CARRERA}</h3>
+      </td>
+      <td style="width: 25%; text-align: right; border: none; vertical-align: middle;">{escudo_fi}</td>
+    </tr>
+  </table>
+  <hr style="border: 0; height: 1px; background: #D0D0D0; margin: 30px 0;">
+  <div style="margin: 40px 0;">
+    <p style="font-size: 22px; margin: 0; font-weight: bold; color: #111;">{NUMERO_PROYECTO}</p>
+    <h2 style="font-size: 28px; color: #0F2C59; margin: 10px 0 0 0; font-weight: bold; line-height: 1.3;">{TITULO_PROYECTO}</h2>
+    <p style="font-size: 16px; color: #555; font-style: italic; margin: 12px 0 0 0;">{SUBTITULO_PROYECTO}</p>
+  </div>
+  <hr style="border: 0; height: 1px; background: #D0D0D0; margin: 30px 0;">
+  <div style="margin: 30px 0;">
+    <p style="font-size: 15px; font-weight: bold; color: #1F4E79; letter-spacing: 1.5px; margin-bottom: 5px;">INTEGRANTES:</p>
+    {lista_integrantes}
+  </div>
+  <div style="margin: 30px 0 40px 0;">
+    <p style="font-size: 15px; font-weight: bold; color: #1F4E79; letter-spacing: 1.5px; margin-bottom: 5px;">PROFESORA:</p>
+    <p style="font-size: 16px; margin: 3px 0; color: #333; font-weight: 500;">- {PROFESORA}</p>
+  </div>
+  <p style="font-size: 14px; color: #777; font-style: italic; margin-top: 50px;">{FECHA_PORTADA}</p>
+</div>
+"""
+
+
+# ============================================================
 # 4. PÁGINA
 # ============================================================
 
 st.set_page_config(page_title="Simulador Fe–Fe₃C", page_icon="🧲", layout="wide")
-st.html(BANNER)
+
+# Pantalla actual: primero la portada; al entrar se muestra el simulador
+if "vista" not in st.session_state:
+    st.session_state["vista"] = "portada"
+
+if st.session_state["vista"] == "portada":
+    st.html(construir_portada())
+    st.write("")
+    _, centro, _ = st.columns([1, 1, 1])
+    if centro.button("Entrar al simulador →", type="primary", use_container_width=True):
+        st.session_state["vista"] = "app"
+        st.rerun()
+    st.stop()  # no se muestra nada más mientras estés en la portada
+
+# Encabezado del simulador, con el botón para volver a la portada
+col_banner, col_volver = st.columns([5, 1])
+col_banner.html(BANNER)
+if col_volver.button("↩ Volver a la portada", use_container_width=True):
+    st.session_state["vista"] = "portada"
+    st.rerun()
 
 EJEMPLOS = {
     "— Elige un ejemplo —": None,
