@@ -838,6 +838,7 @@ def cargar_ejemplo():
 st.session_state.setdefault("C", 0.4)
 st.session_state.setdefault("T", 800.0)
 st.session_state.setdefault("C_anim", 0.4)
+st.session_state.setdefault("ferrita_fija", True)
 st.session_state.setdefault("T_anim", T_MAX)
 if "T_anim_sig" in st.session_state:  # al terminar la animación, el control queda en la temperatura final
     st.session_state["T_anim"] = st.session_state.pop("T_anim_sig")
@@ -891,7 +892,9 @@ with tab_sim:
         vista = c4.radio("Vista del diagrama", ["Completo", "Zona de aceros (0 a 2.2 %C)"],
                          horizontal=True, key="vista_sim")
         ferrita_fija = st.checkbox("Usar ferrita con 0.02 %C constante por debajo de 727 °C "
-                                   "(simplificación habitual en clase)", value=True)
+                                   "(simplificación habitual en clase)", key="ferrita_fija")
+        st.caption("Esta opción solo cambia el resultado en puntos por debajo de 727 °C "
+                   "(por ejemplo, 0.4 %C a 600 °C).")
 
     info = analizar(x0, T, ferrita_fija)
     if info is None:
