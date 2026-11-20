@@ -41,6 +41,8 @@ T_EUTECTICO = 1148
 T_PERITECTICO = 1495
 T_MIN, T_MAX = 20, 1600
 
+SIMBOLO_FASE = {"L": "L", "delta": "δ", "gamma": "γ", "alfa": "α", "Fe3C": "Fe₃C"}
+
 NOMBRES_FASE = {
     "L": "Líquido (L)",
     "delta": "Ferrita δ",
@@ -725,7 +727,7 @@ ETIQUETAS = [  # (%C, T, texto, tamaño)
 ]
 
 
-def crear_diagrama(x0, T, info, vista, trayecto_desde=None):
+def crear_diagrama(x0, T, info, vista, trayecto_desde=None, etiquetas=False):
     fig = go.Figure()
 
     for region in REGIONES:
@@ -775,6 +777,29 @@ def crear_diagrama(x0, T, info, vista, trayecto_desde=None):
         fig.add_trace(go.Scatter(x=[xl, xr], y=[T, T], mode="lines+markers", name="Línea de reparto",
                                  line=dict(color="black", dash="dash", width=2),
                                  marker=dict(color="black", size=8, symbol="square"), hoverinfo="skip"))
+    # Etiquetas con los %C que se usan en la regla de la palanca: C0 y los extremos de la línea de reparto
+    if etiquetas:
+        ancho = 2.2 if vista == "Zona de aceros (0 a 2.2 %C)" else 6.8
+
+        def poner_etiqueta(x, texto, desplazamiento, ancla):
+            fig.add_annotation(x=x, y=T, text=texto, showarrow=False, yshift=desplazamiento, xanchor=ancla,
+                               font=dict(size=11, color="#1b2733"), bgcolor="rgba(255,255,255,0.9)",
+                               bordercolor="#8a97a3", borderwidth=1, borderpad=2)
+
+        if x0 <= ancho:  # en la vista de aceros, un punto con más %C queda fuera del recuadro
+            poner_etiqueta(x0, f"C<sub>0</sub> = {formato_comp(x0)}", 26, "center")
+        if info["tie"]:
+            xl, xr = info["tie"]
+            izq, der = info["fases"]
+            fila_r = -20 if abs(xr - xl) > 0.35 * ancho else -46  # si están cerca, se escalonan
+            ancla_l = "left" if xl < 0.2 * ancho else "right"
+            poner_etiqueta(xl, f"C<sub>{SIMBOLO_FASE[izq['fase']]}</sub> = {formato_comp(xl)}", -20, ancla_l)
+            texto_r = f"C<sub>{SIMBOLO_FASE[der['fase']]}</sub> = {formato_comp(xr)}"
+            if xr > ancho:  # queda fuera del recuadro (vista de aceros): se pega al borde derecho
+                poner_etiqueta(ancho, texto_r + " →", fila_r, "right")
+            else:
+                poner_etiqueta(xr, texto_r, fila_r, "right" if xr > 0.8 * ancho else "left")
+
     fig.add_trace(go.Scatter(x=[x0], y=[T], mode="markers", name="Tu punto",
                              marker=dict(symbol="star", size=20, color="#d62728",
                                          line=dict(color="white", width=1.5)),
@@ -996,7 +1021,16 @@ with tab_sim:
 
     col_diagrama, col_resultados = st.columns([3, 2])
     with col_diagrama:
-        st.plotly_chart(crear_diagrama(x0, T, info, vista), use_container_width=True, key="diagrama_punto")
+        st.plotly_chart(crear_diagrama(x0, T, info, vista, etiquetas=True),
+                        use_container_width=True, key="diagrama_punto")
+        if info["tie"]:
+            s_i = SIMBOLO_FASE[info["fases"][0]["fase"]]
+            s_d = SIMBOLO_FASE[info["fases"][1]["fase"]]
+            st.caption(f"C₀ es el %C de la aleación; C{s_i} y C{s_d} son los %C de cada fase en los extremos "
+                       f"de la línea de reparto. Regla de la palanca: W({s_i}) = (C{s_d} − C₀) / (C{s_d} − C{s_i}) "
+                       f"y W({s_d}) = (C₀ − C{s_i}) / (C{s_d} − C{s_i}).")
+        else:
+            st.caption("C₀ es el %C de la aleación. Con una sola fase no hay línea de reparto ni regla de la palanca.")
 
     with col_resultados:
         st.html(resumen_html(info, x0, T))
